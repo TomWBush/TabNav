@@ -1,7 +1,7 @@
 # TabNav
 An extension that allows you to quickly navigate and manage your current active tabs.
 
-## Features:
+## Features
 • Search and filter tabs.
 
 • One-click navigate.
