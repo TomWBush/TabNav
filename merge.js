@@ -1,13 +1,13 @@
-function mergeAll(){
-    chrome.tabs.query({lastFocusedWindow: false}, function(tabs){
-    var list = [];
-    for(i = 0; i < tabs.length; i++){
-        list.push(tabs[i].id);
+function mergeAll() {
+  chrome.tabs.query({ lastFocusedWindow: false }, (allTabs) => {
+    const list = [];
+    for (let i = 0; i < allTabs.length; i += 1) {
+      list.push(allTabs[i].id);
     }
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs){
-      chrome.tabs.move(list, {windowId : tabs[0].windowId, index: -1});
-      });
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (lastFocusedTab) => {
+      chrome.tabs.move(list, { windowId: lastFocusedTab[0].windowId, index: -1 });
     });
-    location.reload();
+  });
+  window.location.reload();
 }
-document.getElementById("mergeAll").addEventListener("click", mergeAll);
+document.getElementById('mergeAll').addEventListener('click', mergeAll);
