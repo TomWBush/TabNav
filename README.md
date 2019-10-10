@@ -1,4 +1,6 @@
-# TabNav
+
+# <img src="https://github.com/TomWBush/TabNav/blob/master/images/icon%205.png" alt="TabNav" width="8%" height="8%">TabNav
+
 An extension that allows you to quickly navigate and manage your current active tabs.
 
 ## Features
