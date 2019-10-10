@@ -18,4 +18,4 @@ An extension that allows you to quickly navigate and manage your current active 
 
 
 ## Install
-Available on Chrome Web Store
+Available on [Chrome Web Store](https://chrome.google.com/webstore/detail/tab-nav/hohloeilanpmnjpnabmlokcliaibcdjb)
