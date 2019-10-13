@@ -1,0 +1,25 @@
+{
+  "name": "tabnav",
+  "version": "1.0.0",
+  "description": "An extension that allows you to quickly navigate and manage your current active tabs.",
+  "main": ".eslintrc.js",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^6.5.1",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/TomWBush/TabNav.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TomWBush/TabNav/issues"
+  },
+  "homepage": "https://github.com/TomWBush/TabNav#readme"
+}
