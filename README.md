@@ -20,7 +20,7 @@ An extension that allows you to quickly navigate and manage your current active 
 ## Installation
 First, clone TabNav repository.
 
-    $ git clone git://github.com/mooz/percol.git
+    $ git clone https://github.com/TomWBush/TabNav.git
 
 Then, open chrome://extensions/ on your Chrome Browser.
 
