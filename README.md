@@ -17,5 +17,13 @@ An extension that allows you to quickly navigate and manage your current active 
 • (Keyboard shortcut) -- Press Ctrl + M to quickly open popup window
 
 
-## Install
-Available on [Chrome Web Store](https://chrome.google.com/webstore/detail/tab-nav/hohloeilanpmnjpnabmlokcliaibcdjb)
+## Installation
+First, clone TabNav repository.
+
+    $ git clone git://github.com/mooz/percol.git
+
+Then, open chrome://extensions/ on your Chrome Browser.
+
+If you haven't turn on Developer mode, turn it on in the upper-right corner.
+
+Click Load unpacked on the upper-left corner, and select TabNav folder.
