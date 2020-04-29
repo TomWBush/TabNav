@@ -2,7 +2,7 @@
 let newWinId;
 let tabsToMove = [];
 let curTab;
-let d = {};  // dictionary that maps windowId to last tab index (for keydown keyup usage)
+const winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
 
 
 document.getElementById('input-search').addEventListener('keyup', filterResults);
@@ -41,9 +41,9 @@ chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
 updateTabResults();
 
 
-/********************/
-/* Helper Functions */
-/********************/
+/** ***************
+  Helper Functions
+ ***************** */
 
 /**
  * Filter search result
@@ -78,7 +78,7 @@ function filterResults() {
 
 /**
  * Switch between tabs according to id (in active window)
- * 
+ *
  * @param {Array} tabsIn  Array of tabs in active window
  * @param {int} idIn      The id of tab to switch to
  */
@@ -90,7 +90,7 @@ function switchTab(tabsIn, idIn) {
 
 /**
  * Close selected tab
- * 
+ *
  * @param {Array} tabsIn All tabs in the window that has the tab you want to close
  * @param {int} winId    Window ID of the window that has the tab you want to close
  * @param {int} tabId    Tab ID of the tab you want to close
@@ -115,12 +115,12 @@ function closeTab(tabsIn, winId, tabId, curLi) {
   }
   event.stopPropagation();
 }
- 
+
 /**
  * Counting occurence of char in string.
- * 
- * @param {string} string 
- * @param {char} char 
+ *
+ * @param {string} string
+ * @param {char} char
  */
 function count(string, char) {
   const re = new RegExp(char, 'gi');
@@ -200,7 +200,7 @@ function updateTabResults() {
       str = str.concat('Window ', (i + 1).toString());
       title.innerHTML = str;
       document.getElementById('tabs_results').appendChild(title);
-      d[i] = windows[i].tabs.length - 1;
+      winidToLastab[i] = windows[i].tabs.length - 1;
       for (let j = 0; j < windows[i].tabs.length; j += 1) {
         const img = document.createElement('img');
         const newli = document.createElement('li');
@@ -267,24 +267,25 @@ function updateTabResults() {
         newa.appendChild(url);
         newa.appendChild(x);
         newa.setAttribute('draggable', true);
-        newa.addEventListener("dragover", (event) => {
-          drag_and_drop_handler(event, windows);
+        newa.addEventListener('dragover', (event) => {
+          dragAndDropHandler(event, windows);
         });
 
-        newa.addEventListener("dragend", () => {
-          for (let li of $('#tabs_results')[0].getElementsByTagName("li")) {
-            li.setAttribute('style', 'border: none');
+        newa.addEventListener('dragend', () => {
+          const liArray = $('#tabs_results')[0].getElementsByTagName('li');
+          for (let k = 0; k < liArray.length; k += 1) {
+            liArray[k].setAttribute('style', 'border: none');
           }
-        })
+        });
 
         // curTab from getCurTabId. Used promise to solve asynchronous problem.
-        if (curTab != undefined && windows[i].tabs[j].id === curTab.id) {
+        if (curTab !== undefined && windows[i].tabs[j].id === curTab.id) {
           newa.setAttribute('style', 'background-color: #A7E8FF;');
         }
         newli.appendChild(img);
         newli.appendChild(newa);
-        newli.addEventListener('contextmenu', function rightClick(e) {
-          const tab = e.path[1].id;
+        newli.addEventListener('contextmenu', function(event) {
+          const tab = event.path[1].id;
           if (tabsToMove.includes(tab)) {
             tabsToMove.splice(tabsToMove.indexOf(tab), 1);
             const aCol = this.getElementsByTagName('a');
@@ -294,10 +295,10 @@ function updateTabResults() {
             const aCol = this.getElementsByTagName('a');
             aCol[0].style.backgroundColor = '#ffd27f';
           }
-          str = '';
-          str = str.concat('Merge selected (', tabsToMove.length, ')');
-          document.getElementById('merge-selected').innerHTML = str;
-          e.preventDefault();
+          let tempStr = '';
+          tempStr = str.concat('Merge selected (', tabsToMove.length, ')');
+          document.getElementById('merge-selected').innerHTML = tempStr;
+          event.preventDefault();
         }, false);
 
         newli.addEventListener('click', switchTab.bind(null, windows[i].tabs, j));
@@ -322,8 +323,8 @@ function updateButtonCount() {
  * @param {*} event    the drag event
  * @param {*} windows  all open windows
  */
-function drag_and_drop_handler(event, windows) {
-  let tabs = $('#tabs_results')[0].getElementsByTagName("li");
+function dragAndDropHandler(event, windows) {
+  const tabs = $('#tabs_results')[0].getElementsByTagName('li');
   if (event.clientY < tabs[0].offsetTop) {
     tabs[0].setAttribute('style', 'border-top: solid green;');
   } else {
@@ -337,19 +338,18 @@ function drag_and_drop_handler(event, windows) {
   }
 
   // If more than 1 window, check position window by window
-  let window_idx = 0;
+  let windowIdx = 0;
   if (windows.length > 1) {
-    for (let i = 1; i < windows.length; ++i) {
-      if (event.clientY + 10 > document.getElementById(i - 1).offsetTop &&
-          event.clientY < document.getElementById(i).offsetTop) {
-            window_idx = i - 1;
-          }
+    for (let i = 1; i < windows.length; i += 1) {
+      if (event.clientY + 10 > document.getElementById(i - 1).offsetTop
+          && event.clientY < document.getElementById(i).offsetTop) {
+        windowIdx = i - 1;
+      }
     }
-    if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop &&
-        event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
-          window_idx = windows.length - 1;
-        }
-    console.log("In window: " + window_idx);
+    if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop
+        && event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+      windowIdx = windows.length - 1;
+    }
   }
 
   // if (event.screenY < $('#0').offset().top) {
@@ -397,12 +397,12 @@ $(document).on('keydown.up', function() {
     .setAttribute('style', 'background-color: #A7E8FF;');
     curTabId -= 1;
   }
-  else if( document.getElementById((curWinId - 1) + ' ' + d[curWinId - 1]) ){
+  else if( document.getElementById((curWinId - 1) + ' ' + winidToLastab[curWinId - 1]) ){
     document.getElementById(curWinId + ' ' + curTabId).childNodes[1]
     .setAttribute('style', 'background-color: #f6f6f6;');
-    document.getElementById((curWinId - 1) + ' ' + d[curWinId - 1])
+    document.getElementById((curWinId - 1) + ' ' + winidToLastab[curWinId - 1])
     .childNodes[1].setAttribute('style', 'background-color: #A7E8FF;');
-    curTabId = d[curWinId - 1];
+    curTabId = winidToLastab[curWinId - 1];
     curWinId -= 1;
   }
 });
