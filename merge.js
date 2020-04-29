@@ -10,4 +10,5 @@ function mergeAll() {
   });
   window.location.reload();
 }
+
 document.getElementById('mergeAll').addEventListener('click', mergeAll);

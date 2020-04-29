@@ -4,8 +4,6 @@ let tabsToMove = [];
 let curTab;
 // dictionary that maps windowId to last tab index (for keydown keyup usage)
 const d = {};
-// let curTabId;
-// let curWinId;
 
 // Helper function to filter search result
 function filterResults() {
@@ -229,14 +227,19 @@ function updateTabResults() {
         newa.appendChild(url);
         newa.appendChild(x);
         newa.setAttribute('draggable', true);
+        newa.addEventListener("dragover", (event) => {
+          drag_and_drop_handler(event, windows);
+        });
+
+        newa.addEventListener("dragend", () => {
+          for (let li of $('#tabs_results')[0].getElementsByTagName("li")) {
+            li.setAttribute('style', 'border: none');
+          }
+        })
 
         // curTab from getCurTabId. Used promise to solve asynchronous problem.
         if (windows[i].tabs[j].id === curTab.id) {
           newa.setAttribute('style', 'background-color: #A7E8FF;');
-          /*
-          curWinId = i;
-          curTabId = j;
-          */
         }
         newli.appendChild(img);
         newli.appendChild(newa);
@@ -269,6 +272,42 @@ function updateButtonCount() {
   let str = '';
   str = str.concat('Merge selected (', tabsToMove.length, ')');
   document.getElementById('merge-selected').innerHTML = str;
+}
+
+
+function drag_and_drop_handler(event, windows) {
+  let tabs = $('#tabs_results')[0].getElementsByTagName("li");
+  if (event.clientY < tabs[0].offsetTop) {
+    tabs[0].setAttribute('style', 'border-top: solid green;');
+  } else {
+    tabs[0].setAttribute('style', 'border-top: none;');
+  }
+
+  if (event.clientY + 15 > tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+    tabs[tabs.length - 1].setAttribute('style', 'border-bottom: solid green;');
+  } else {
+    tabs[tabs.length - 1].setAttribute('style', 'border-bottom: none;');
+  }
+
+  // If more than 1 window, check position window by window
+  let window_idx = 0;
+  if (windows.length > 1) {
+    for (let i = 1; i < windows.length; ++i) {
+      if (event.clientY + 10 > document.getElementById(i - 1).offsetTop &&
+          event.clientY < document.getElementById(i).offsetTop) {
+            window_idx = i - 1;
+          }
+    }
+    if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop &&
+        event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+          window_idx = windows.length - 1;
+        }
+    console.log("In window: " + window_idx);
+  }
+
+  // if (event.screenY < $('#0').offset().top) {
+  //   console.log("HERE");
+  // };
 }
 
 // Update button count, if selected tab is closed.
