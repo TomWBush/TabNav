@@ -2,10 +2,52 @@
 let newWinId;
 let tabsToMove = [];
 let curTab;
-// dictionary that maps windowId to last tab index (for keydown keyup usage)
-const d = {};
+let d = {};  // dictionary that maps windowId to last tab index (for keydown keyup usage)
 
-// Helper function to filter search result
+
+document.getElementById('input-search').addEventListener('keyup', filterResults);
+
+// Chain the promise to solve asynchronous problem
+getCurTabId().then((result) => {
+  curTab = result;
+});
+
+Event.prototype.addHandler = function pushHandler(eventHandler) {
+  this.eventHandlers.push(eventHandler);
+};
+
+Event.prototype.execute = function setHandler() {
+  for (let i = 0; i < this.eventHandlers.length; i += 1) {
+    this.eventHandlers[i]();
+  }
+};
+
+const openWindow = new Event();
+// Add handler.
+openWindow.addHandler(newWindow);
+openWindow.addHandler(moveTabs);
+openWindow.addHandler(removeBlank);
+openWindow.addHandler(focus);
+// Regiser one listener on some object.
+document.getElementById('merge-selected').addEventListener('click', () => {
+  if (tabsToMove.length > 0) { // do nothing if no tab is selected
+    openWindow.execute();
+  }
+}, true);
+
+// Update button count, if selected tab is closed.
+chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
+
+updateTabResults();
+
+
+/********************/
+/* Helper Functions */
+/********************/
+
+/**
+ * Filter search result
+ */
 function filterResults() {
   const input = document.getElementById('input-search');
   const filter = input.value.toUpperCase();
@@ -34,15 +76,26 @@ function filterResults() {
   });
 }
 
-document.getElementById('input-search').addEventListener('keyup', filterResults);
-
-// Helper function to switch between tabs according to id (in active window)
+/**
+ * Switch between tabs according to id (in active window)
+ * 
+ * @param {Array} tabsIn  Array of tabs in active window
+ * @param {int} idIn      The id of tab to switch to
+ */
 function switchTab(tabsIn, idIn) {
   chrome.tabs.update(tabsIn[idIn].id, { active: true }, () => {
     chrome.windows.update(tabsIn[idIn].windowId, { focused: true });
   });
 }
 
+/**
+ * Close selected tab
+ * 
+ * @param {Array} tabsIn All tabs in the window that has the tab you want to close
+ * @param {int} winId    Window ID of the window that has the tab you want to close
+ * @param {int} tabId    Tab ID of the tab you want to close
+ * @param {li} curLi      The corresponding list item in popup of the tab you want to close
+ */
 function closeTab(tabsIn, winId, tabId, curLi) {
   chrome.tabs.query({}, () => {
     chrome.tabs.remove(tabsIn[tabId].id);
@@ -62,14 +115,21 @@ function closeTab(tabsIn, winId, tabId, curLi) {
   }
   event.stopPropagation();
 }
-
-// Helper for parsing html. Counting occurence.
+ 
+/**
+ * Counting occurence of char in string.
+ * 
+ * @param {string} string 
+ * @param {char} char 
+ */
 function count(string, char) {
   const re = new RegExp(char, 'gi');
   return string.match(re).length;
 }
 
-// Return promise using asynchronous query
+/**
+ * Asynchronously query the current tab
+ */
 function getCurTabId() {
   const promise = new Promise((resolve) => {
     chrome.tabs.query({ highlighted: true, lastFocusedWindow: true }, (tabs) => {
@@ -79,11 +139,17 @@ function getCurTabId() {
   return promise;
 }
 
-// Chain the promise to solve asynchronous problem
-getCurTabId().then((result) => {
-  curTab = result;
-});
+/**
+ * Use event handler to open a new window
+ * (instead of a new tab to get around behavior from chrome.windows.create)
+*/
+function Event() {
+  this.eventHandlers = [];
+}
 
+/**
+ * Create a new window
+ */
 function newWindow() {
   chrome.windows.create({}, (win) => {
     newWinId = win.id;
@@ -110,7 +176,9 @@ function removeBlank() {
   window.location.reload();
 }
 
-// Focus onto merge-selected windows
+/**
+ * Focus onto merge-selected windows
+ */
 function focus() {
   chrome.windows.getAll((windows) => {
     for (let i = 0; i < windows.length; i += 1) {
@@ -118,38 +186,10 @@ function focus() {
     }
   });
 }
-/*
-Use event handler to open a new window
-(instead of a new tab to get around behavior from chrome.windows.create)
-*/
-function Event() {
-  this.eventHandlers = [];
-}
 
-Event.prototype.addHandler = function pushHandler(eventHandler) {
-  this.eventHandlers.push(eventHandler);
-};
-
-Event.prototype.execute = function setHandler() {
-  for (let i = 0; i < this.eventHandlers.length; i += 1) {
-    this.eventHandlers[i]();
-  }
-};
-
-const openWindow = new Event();
-// Add handler.
-openWindow.addHandler(newWindow);
-openWindow.addHandler(moveTabs);
-openWindow.addHandler(removeBlank);
-openWindow.addHandler(focus);
-// Regiser one listener on some object.
-document.getElementById('merge-selected').addEventListener('click', () => {
-  if (tabsToMove.length > 0) { // do nothing if no tab is selected
-    openWindow.execute();
-  }
-}, true);
-
-
+/**
+ * Update the list of all open tabs inside popup
+ */
 function updateTabResults() {
   chrome.windows.getAll({ populate: true }, (windows) => {
     for (let i = 0; i < windows.length; i += 1) {
@@ -238,7 +278,7 @@ function updateTabResults() {
         })
 
         // curTab from getCurTabId. Used promise to solve asynchronous problem.
-        if (windows[i].tabs[j].id === curTab.id) {
+        if (curTab != undefined && windows[i].tabs[j].id === curTab.id) {
           newa.setAttribute('style', 'background-color: #A7E8FF;');
         }
         newli.appendChild(img);
@@ -268,13 +308,20 @@ function updateTabResults() {
   });
 }
 
+/**
+ * Update the open tab count on the extension icon
+ */
 function updateButtonCount() {
   let str = '';
   str = str.concat('Merge selected (', tabsToMove.length, ')');
   document.getElementById('merge-selected').innerHTML = str;
 }
 
-
+/**
+ * Reorder the tab using drag and drop
+ * @param {*} event    the drag event
+ * @param {*} windows  all open windows
+ */
 function drag_and_drop_handler(event, windows) {
   let tabs = $('#tabs_results')[0].getElementsByTagName("li");
   if (event.clientY < tabs[0].offsetTop) {
@@ -310,10 +357,7 @@ function drag_and_drop_handler(event, windows) {
   // };
 }
 
-// Update button count, if selected tab is closed.
-chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
 
-updateTabResults();
 
 // Unfinished code
 /*
