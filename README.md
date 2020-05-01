@@ -22,7 +22,9 @@ An extension that allows you to quickly navigate and manage your current active 
 ## Installation
 1. clone TabNav repository.
 
-    $ git clone https://github.com/TomWBush/TabNav.git
+```powershell
+  git clone https://github.com/TomWBush/TabNav.git
+``` 
 
 2. open chrome://extensions/ on your Chrome Browser.
 
