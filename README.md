@@ -20,12 +20,14 @@ An extension that allows you to quickly navigate and manage your current active 
 
 
 ## Installation
-First, clone TabNav repository.
+1. clone TabNav repository.
 
     $ git clone https://github.com/TomWBush/TabNav.git
 
-Then, open chrome://extensions/ on your Chrome Browser.
+2. open chrome://extensions/ on your Chrome Browser.
 
-If you haven't turn on Developer mode, turn it on in the upper-right corner.
+3. turn on Developer mode in the upper-right corner.
 
-Click Load unpacked on the upper-left corner, and select TabNav folder.
+4. click Load unpacked on the upper-left corner.
+
+5. single-click TabNav folder, and click on Select Folder.
