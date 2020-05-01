@@ -3,6 +3,9 @@ let newWinId;
 let tabsToMove = [];
 let curTab;
 const winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
+let last_clientY = -100; // last drag event coordinate
+let targetWinId = -2; // target window of dropped tab
+let targetTabIdx = -2; // tab index inside the target window of dropped tab
 
 
 document.getElementById('input-search').addEventListener('keyup', filterResults);
@@ -268,14 +271,11 @@ function updateTabResults() {
         newa.appendChild(x);
         newa.setAttribute('draggable', true);
         newa.addEventListener('dragover', (event) => {
-          dragAndDropHandler(event, windows);
+          dragHandler(event, windows);
         });
-
-        newa.addEventListener('dragend', () => {
-          const liArray = $('#tabs_results')[0].getElementsByTagName('li');
-          for (let k = 0; k < liArray.length; k += 1) {
-            liArray[k].setAttribute('style', 'border: none');
-          }
+        newa.addEventListener('dragend', (event) => {
+          dropHandler(event, windows);
+          window.location.reload();
         });
 
         // curTab from getCurTabId. Used promise to solve asynchronous problem.
@@ -319,42 +319,98 @@ function updateButtonCount() {
 }
 
 /**
+ * Remove the green line in drag and drop
+ * Called at the beginning of DragHandler
+ */
+function resetDragHighlight() {
+  const liArray = $('#tabs_results')[0].getElementsByTagName('li');
+  for (let k = 0; k < liArray.length; k += 1) {
+    liArray[k].setAttribute('style', 'border: none');
+  }
+}
+
+/**
  * Reorder the tab using drag and drop
+ * Get the drop location 
  * @param {*} event    the drag event
  * @param {*} windows  all open windows
  */
-function dragAndDropHandler(event, windows) {
+function dragHandler(event, windows) {
+  // Prevent the line from blinking
+  if (Math.abs(event.clientY - last_clientY) > 1) {
+    last_clientY = event.clientY;
+    resetDragHighlight();
+  }
+
   const tabs = $('#tabs_results')[0].getElementsByTagName('li');
   if (event.clientY < tabs[0].offsetTop) {
+    targetWinId = windows[0].id;
+    targetTabIdx = 0;
     tabs[0].setAttribute('style', 'border-top: solid green;');
-  } else {
-    tabs[0].setAttribute('style', 'border-top: none;');
+    return;
   }
 
   if (event.clientY + 15 > tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+    targetWinId = windows[windows.length - 1].id;
+    targetTabIdx = -1;
     tabs[tabs.length - 1].setAttribute('style', 'border-bottom: solid green;');
-  } else {
-    tabs[tabs.length - 1].setAttribute('style', 'border-bottom: none;');
+    return;
   }
 
-  // If more than 1 window, check position window by window
-  let windowIdx = 0;
+  let winId = 0;
+  // If more than 1 window, check which window is target window
+  let windowMiddle = (tabs[0].getBoundingClientRect().top - document.getElementById(0).offsetTop) / 2;
+  let tabMiddle = (tabs[0].getBoundingClientRect().bottom - tabs[0].getBoundingClientRect().top) / 2;
   if (windows.length > 1) {
     for (let i = 1; i < windows.length; i += 1) {
       if (event.clientY + 10 > document.getElementById(i - 1).offsetTop
           && event.clientY < document.getElementById(i).offsetTop) {
-        windowIdx = i - 1;
+        winId = i - 1;
       }
     }
     if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop
         && event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
-      windowIdx = windows.length - 1;
+      winId = windows.length - 1;
     }
   }
+  // Then check where in target window
+  chrome.tabs.query({ windowId: windows[winId].id }, (targetWindowTabs) => {
+    if (winId != 0 && document.getElementById(winId).offsetTop + windowMiddle + 0.01 < event.clientY
+        && document.getElementById(winId + ' ' + 0).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
+          document.getElementById(winId + ' ' + 0).setAttribute('style', 'border-top: solid green;');
+          targetWinId = windows[winId].id;
+          targetTabIdx = 0;
+        }
+    else if (winId != windows.length - 1 && document.getElementById(winId + 1).offsetTop + windowMiddle - 0.01 > event.clientY
+             && document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY) {
+          document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).setAttribute('style', 'border-bottom: solid green;');
+          targetWinId = windows[winId].id;
+          targetTabIdx = -1;
+    }
+    else {
+      for (let i = 1; i < targetWindowTabs.length; i += 1) {
+        if (document.getElementById(winId + ' ' + (i - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY
+            && document.getElementById(winId + ' ' + i).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
+              document.getElementById(winId + ' ' + i).setAttribute('style', 'border-top: solid green;');
+              targetWinId = windows[winId].id;
+              targetTabIdx = i;
+              break;
+            }
+      }
+    }
+  });
+}
 
-  // if (event.screenY < $('#0').offset().top) {
-  //   console.log("HERE");
-  // };
+/**
+ * Reorder the tab using drag and drop
+ * Use the drop location to move tab 
+ */
+function dropHandler(event, windows) {
+  resetDragHighlight();
+  chrome.tabs.query({ windowId: windows[parseInt(event.srcElement.id[0])].id }, (srcTab) => {
+    chrome.tabs.move(srcTab[parseInt(event.srcElement.id[2])].id, { windowId: targetWinId, index: targetTabIdx });
+    event.stopPropagation();
+  });
 }
 
 
