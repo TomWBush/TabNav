@@ -2,12 +2,55 @@
 let newWinId;
 let tabsToMove = [];
 let curTab;
-// dictionary that maps windowId to last tab index (for keydown keyup usage)
-const d = {};
-// let curTabId;
-// let curWinId;
+const winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
+let last_clientY = -100; // last drag event coordinate
+let targetWinId = -2; // target window of dropped tab
+let targetTabIdx = -2; // tab index inside the target window of dropped tab
 
-// Helper function to filter search result
+
+document.getElementById('input-search').addEventListener('keyup', filterResults);
+
+// Chain the promise to solve asynchronous problem
+getCurTabId().then((result) => {
+  curTab = result;
+});
+
+Event.prototype.addHandler = function pushHandler(eventHandler) {
+  this.eventHandlers.push(eventHandler);
+};
+
+Event.prototype.execute = function setHandler() {
+  for (let i = 0; i < this.eventHandlers.length; i += 1) {
+    this.eventHandlers[i]();
+  }
+};
+
+const openWindow = new Event();
+// Add handler.
+openWindow.addHandler(newWindow);
+openWindow.addHandler(moveTabs);
+openWindow.addHandler(removeBlank);
+openWindow.addHandler(focus);
+// Regiser one listener on some object.
+document.getElementById('merge-selected').addEventListener('click', () => {
+  if (tabsToMove.length > 0) { // do nothing if no tab is selected
+    openWindow.execute();
+  }
+}, true);
+
+// Update button count, if selected tab is closed.
+chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
+
+updateTabResults();
+
+
+/** ***************
+  Helper Functions
+ ***************** */
+
+/**
+ * Filter search result
+ */
 function filterResults() {
   const input = document.getElementById('input-search');
   const filter = input.value.toUpperCase();
@@ -36,15 +79,26 @@ function filterResults() {
   });
 }
 
-document.getElementById('input-search').addEventListener('keyup', filterResults);
-
-// Helper function to switch between tabs according to id (in active window)
+/**
+ * Switch between tabs according to id (in active window)
+ *
+ * @param {Array} tabsIn  Array of tabs in active window
+ * @param {int} idIn      The id of tab to switch to
+ */
 function switchTab(tabsIn, idIn) {
   chrome.tabs.update(tabsIn[idIn].id, { active: true }, () => {
     chrome.windows.update(tabsIn[idIn].windowId, { focused: true });
   });
 }
 
+/**
+ * Close selected tab
+ *
+ * @param {Array} tabsIn All tabs in the window that has the tab you want to close
+ * @param {int} winId    Window ID of the window that has the tab you want to close
+ * @param {int} tabId    Tab ID of the tab you want to close
+ * @param {li} curLi      The corresponding list item in popup of the tab you want to close
+ */
 function closeTab(tabsIn, winId, tabId, curLi) {
   chrome.tabs.query({}, () => {
     chrome.tabs.remove(tabsIn[tabId].id);
@@ -65,13 +119,20 @@ function closeTab(tabsIn, winId, tabId, curLi) {
   event.stopPropagation();
 }
 
-// Helper for parsing html. Counting occurence.
+/**
+ * Counting occurence of char in string.
+ *
+ * @param {string} string
+ * @param {char} char
+ */
 function count(string, char) {
   const re = new RegExp(char, 'gi');
   return string.match(re).length;
 }
 
-// Return promise using asynchronous query
+/**
+ * Asynchronously query the current tab
+ */
 function getCurTabId() {
   const promise = new Promise((resolve) => {
     chrome.tabs.query({ highlighted: true, lastFocusedWindow: true }, (tabs) => {
@@ -81,11 +142,17 @@ function getCurTabId() {
   return promise;
 }
 
-// Chain the promise to solve asynchronous problem
-getCurTabId().then((result) => {
-  curTab = result;
-});
+/**
+ * Use event handler to open a new window
+ * (instead of a new tab to get around behavior from chrome.windows.create)
+*/
+function Event() {
+  this.eventHandlers = [];
+}
 
+/**
+ * Create a new window
+ */
 function newWindow() {
   chrome.windows.create({}, (win) => {
     newWinId = win.id;
@@ -112,7 +179,9 @@ function removeBlank() {
   window.location.reload();
 }
 
-// Focus onto merge-selected windows
+/**
+ * Focus onto merge-selected windows
+ */
 function focus() {
   chrome.windows.getAll((windows) => {
     for (let i = 0; i < windows.length; i += 1) {
@@ -120,38 +189,10 @@ function focus() {
     }
   });
 }
-/*
-Use event handler to open a new window
-(instead of a new tab to get around behavior from chrome.windows.create)
-*/
-function Event() {
-  this.eventHandlers = [];
-}
 
-Event.prototype.addHandler = function pushHandler(eventHandler) {
-  this.eventHandlers.push(eventHandler);
-};
-
-Event.prototype.execute = function setHandler() {
-  for (let i = 0; i < this.eventHandlers.length; i += 1) {
-    this.eventHandlers[i]();
-  }
-};
-
-const openWindow = new Event();
-// Add handler.
-openWindow.addHandler(newWindow);
-openWindow.addHandler(moveTabs);
-openWindow.addHandler(removeBlank);
-openWindow.addHandler(focus);
-// Regiser one listener on some object.
-document.getElementById('merge-selected').addEventListener('click', () => {
-  if (tabsToMove.length > 0) { // do nothing if no tab is selected
-    openWindow.execute();
-  }
-}, true);
-
-
+/**
+ * Update the list of all open tabs inside popup
+ */
 function updateTabResults() {
   chrome.windows.getAll({ populate: true }, (windows) => {
     for (let i = 0; i < windows.length; i += 1) {
@@ -162,7 +203,7 @@ function updateTabResults() {
       str = str.concat('Window ', (i + 1).toString());
       title.innerHTML = str;
       document.getElementById('tabs_results').appendChild(title);
-      d[i] = windows[i].tabs.length - 1;
+      winidToLastab[i] = windows[i].tabs.length - 1;
       for (let j = 0; j < windows[i].tabs.length; j += 1) {
         const img = document.createElement('img');
         const newli = document.createElement('li');
@@ -229,19 +270,22 @@ function updateTabResults() {
         newa.appendChild(url);
         newa.appendChild(x);
         newa.setAttribute('draggable', true);
+        newa.addEventListener('dragover', (event) => {
+          dragHandler(event, windows);
+        });
+        newa.addEventListener('dragend', (event) => {
+          dropHandler(event, windows);
+          window.location.reload();
+        });
 
         // curTab from getCurTabId. Used promise to solve asynchronous problem.
-        if (windows[i].tabs[j].id === curTab.id) {
+        if (curTab !== undefined && windows[i].tabs[j].id === curTab.id) {
           newa.setAttribute('style', 'background-color: #A7E8FF;');
-          /*
-          curWinId = i;
-          curTabId = j;
-          */
         }
         newli.appendChild(img);
         newli.appendChild(newa);
-        newli.addEventListener('contextmenu', function rightClick(e) {
-          const tab = e.path[1].id;
+        newli.addEventListener('contextmenu', function(event) {
+          const tab = event.path[1].id;
           if (tabsToMove.includes(tab)) {
             tabsToMove.splice(tabsToMove.indexOf(tab), 1);
             const aCol = this.getElementsByTagName('a');
@@ -251,10 +295,10 @@ function updateTabResults() {
             const aCol = this.getElementsByTagName('a');
             aCol[0].style.backgroundColor = '#ffd27f';
           }
-          str = '';
-          str = str.concat('Merge selected (', tabsToMove.length, ')');
-          document.getElementById('merge-selected').innerHTML = str;
-          e.preventDefault();
+          let tempStr = '';
+          tempStr = str.concat('Merge selected (', tabsToMove.length, ')');
+          document.getElementById('merge-selected').innerHTML = tempStr;
+          event.preventDefault();
         }, false);
 
         newli.addEventListener('click', switchTab.bind(null, windows[i].tabs, j));
@@ -265,16 +309,111 @@ function updateTabResults() {
   });
 }
 
+/**
+ * Update the open tab count on the extension icon
+ */
 function updateButtonCount() {
   let str = '';
   str = str.concat('Merge selected (', tabsToMove.length, ')');
   document.getElementById('merge-selected').innerHTML = str;
 }
 
-// Update button count, if selected tab is closed.
-chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
+/**
+ * Remove the green line in drag and drop
+ * Called at the beginning of DragHandler
+ */
+function resetDragHighlight() {
+  const liArray = $('#tabs_results')[0].getElementsByTagName('li');
+  for (let k = 0; k < liArray.length; k += 1) {
+    liArray[k].setAttribute('style', 'border: none');
+  }
+}
 
-updateTabResults();
+/**
+ * Reorder the tab using drag and drop
+ * Get the drop location 
+ * @param {*} event    the drag event
+ * @param {*} windows  all open windows
+ */
+function dragHandler(event, windows) {
+  // Prevent the line from blinking
+  if (Math.abs(event.clientY - last_clientY) > 1) {
+    last_clientY = event.clientY;
+    resetDragHighlight();
+  }
+
+  const tabs = $('#tabs_results')[0].getElementsByTagName('li');
+  if (event.clientY < tabs[0].offsetTop) {
+    targetWinId = windows[0].id;
+    targetTabIdx = 0;
+    tabs[0].setAttribute('style', 'border-top: solid green;');
+    return;
+  }
+
+  if (event.clientY + 15 > tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+    targetWinId = windows[windows.length - 1].id;
+    targetTabIdx = -1;
+    tabs[tabs.length - 1].setAttribute('style', 'border-bottom: solid green;');
+    return;
+  }
+
+  let winId = 0;
+  // If more than 1 window, check which window is target window
+  let windowMiddle = (tabs[0].getBoundingClientRect().top - document.getElementById(0).offsetTop) / 2;
+  let tabMiddle = (tabs[0].getBoundingClientRect().bottom - tabs[0].getBoundingClientRect().top) / 2;
+  if (windows.length > 1) {
+    for (let i = 1; i < windows.length; i += 1) {
+      if (event.clientY + 10 > document.getElementById(i - 1).offsetTop
+          && event.clientY < document.getElementById(i).offsetTop) {
+        winId = i - 1;
+      }
+    }
+    if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop
+        && event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
+      winId = windows.length - 1;
+    }
+  }
+  // Then check where in target window
+  chrome.tabs.query({ windowId: windows[winId].id }, (targetWindowTabs) => {
+    if (winId != 0 && document.getElementById(winId).offsetTop + windowMiddle + 0.01 < event.clientY
+        && document.getElementById(winId + ' ' + 0).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
+          document.getElementById(winId + ' ' + 0).setAttribute('style', 'border-top: solid green;');
+          targetWinId = windows[winId].id;
+          targetTabIdx = 0;
+        }
+    else if (winId != windows.length - 1 && document.getElementById(winId + 1).offsetTop + windowMiddle - 0.01 > event.clientY
+             && document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY) {
+          document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).setAttribute('style', 'border-bottom: solid green;');
+          targetWinId = windows[winId].id;
+          targetTabIdx = -1;
+    }
+    else {
+      for (let i = 1; i < targetWindowTabs.length; i += 1) {
+        if (document.getElementById(winId + ' ' + (i - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY
+            && document.getElementById(winId + ' ' + i).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
+              document.getElementById(winId + ' ' + i).setAttribute('style', 'border-top: solid green;');
+              targetWinId = windows[winId].id;
+              targetTabIdx = i;
+              break;
+            }
+      }
+    }
+  });
+}
+
+/**
+ * Reorder the tab using drag and drop
+ * Use the drop location to move tab 
+ */
+function dropHandler(event, windows) {
+  resetDragHighlight();
+  chrome.tabs.query({ windowId: windows[parseInt(event.srcElement.id[0])].id }, (srcTab) => {
+    chrome.tabs.move(srcTab[parseInt(event.srcElement.id[2])].id, { windowId: targetWinId, index: targetTabIdx });
+    event.stopPropagation();
+  });
+}
+
+
 
 // Unfinished code
 /*
@@ -314,12 +453,12 @@ $(document).on('keydown.up', function() {
     .setAttribute('style', 'background-color: #A7E8FF;');
     curTabId -= 1;
   }
-  else if( document.getElementById((curWinId - 1) + ' ' + d[curWinId - 1]) ){
+  else if( document.getElementById((curWinId - 1) + ' ' + winidToLastab[curWinId - 1]) ){
     document.getElementById(curWinId + ' ' + curTabId).childNodes[1]
     .setAttribute('style', 'background-color: #f6f6f6;');
-    document.getElementById((curWinId - 1) + ' ' + d[curWinId - 1])
+    document.getElementById((curWinId - 1) + ' ' + winidToLastab[curWinId - 1])
     .childNodes[1].setAttribute('style', 'background-color: #A7E8FF;');
-    curTabId = d[curWinId - 1];
+    curTabId = winidToLastab[curWinId - 1];
     curWinId -= 1;
   }
 });

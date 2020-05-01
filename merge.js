@@ -1,13 +1,20 @@
 function mergeAll() {
-  chrome.tabs.query({ lastFocusedWindow: false }, (allTabs) => {
-    const list = [];
-    for (let i = 0; i < allTabs.length; i += 1) {
-      list.push(allTabs[i].id);
+  chrome.windows.getAll((windows) => {
+    if (windows.length > 1) {
+      chrome.tabs.query({ currentWindow: true, active: true }, (currentTab) => {
+        chrome.tabs.query({}, (allTabs) => {
+          const list = [];
+          for (let i = 0; i < allTabs.length; i += 1) {
+            if (allTabs[i].id !== currentTab[0].id) list.push(allTabs[i].id);
+          }
+          chrome.tabs.move(list, { windowId: currentTab[0].windowId, index: -1 });
+        });
+      });
+      window.location.reload();
+    } else {
+      // do nothing
     }
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (lastFocusedTab) => {
-      chrome.tabs.move(list, { windowId: lastFocusedTab[0].windowId, index: -1 });
-    });
   });
-  window.location.reload();
 }
+
 document.getElementById('mergeAll').addEventListener('click', mergeAll);
