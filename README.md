@@ -16,6 +16,8 @@ An extension that allows you to quickly navigate and manage your current active 
 
 • (Keyboard shortcut) -- Press Ctrl + M to quickly open popup window
 
+• (Drag and drop) -- Drag and drop to rearrange tabs inside or across windows.
+
 
 ## Installation
 First, clone TabNav repository.
