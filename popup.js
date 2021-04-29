@@ -1,11 +1,11 @@
 // Global variables
-let newWinId;
-let tabsToMove = [];
-let curTab;
-const winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
-let last_clientY = -100; // last drag event coordinate
-let targetWinId = -2; // target window of dropped tab
-let targetTabIdx = -2; // tab index inside the target window of dropped tab
+var newWinId;
+var tabsToMove = [];
+var curTab;
+var winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
+var last_clientY = -100; // last drag event coordinate
+var targetWinId = -2; // target window of dropped tab
+var targetTabIdx = -2; // tab index inside the target window of dropped tab
 
 
 document.getElementById('input-search').addEventListener('keyup', filterResults);
@@ -295,9 +295,7 @@ function updateTabResults() {
             const aCol = this.getElementsByTagName('a');
             aCol[0].style.backgroundColor = '#ffd27f';
           }
-          let tempStr = '';
-          tempStr = str.concat('Merge selected (', tabsToMove.length, ')');
-          document.getElementById('merge-selected').innerHTML = tempStr;
+          updateButtonCount();
           event.preventDefault();
         }, false);
 
