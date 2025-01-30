@@ -44,7 +44,7 @@ document.getElementById('merge-selected').addEventListener('click', () => {
 function filterResults() {
   const input = document.getElementById('input-search');
   const filter = input.value.toUpperCase();
-  const ul = document.getElementById('tabs_results');
+  const ul = document.getElementById('tabs-results');
   const li = ul.getElementsByTagName('li');
 
   for (const element of li) {
@@ -168,7 +168,7 @@ function focus() {
  */
 async function updateTabResults() {
 	const windows = await chrome.windows.getAll({ populate: true });
-	const tabsResults = document.getElementById('tabs_results');
+	const tabsResults = document.getElementById('tabs-results');
 	tabsResults.innerHTML = ''; // Clear previous results
 
 	windows.forEach((window, i) => {
@@ -184,7 +184,6 @@ async function updateTabResults() {
 		window.tabs.forEach((tab, j) => {
 			const li = document.createElement('li');
 			li.id = `${i} ${j}`;
-			li.style.display = 'block';
 
 			const a = document.createElement('a');
 			a.id = `${i} ${j}`;
@@ -193,10 +192,6 @@ async function updateTabResults() {
 			const img = document.createElement('img');
 			img.id = `${i} ${j}`;
 			img.src = tab.favIconUrl || 'images/grey-chrome.png';
-			img.width = 30;
-			img.height = 30;
-			img.style.float = 'left';
-			img.style.verticalAlign = 'middle';
 			img.className = 'favicon';
 
 			const span = document.createElement('span');
@@ -206,26 +201,18 @@ async function updateTabResults() {
 
 			const closeButton = document.createElement('button');
 			closeButton.className = 'close';
-			closeButton.width = 15;
-			closeButton.height = 15;
-			closeButton.setAttribute.type= 'button';
-			closeButton.class = 'close';
+			closeButton.type= 'button';
 			closeButton.ariaLabel= 'close';
-			closeButton.style.float = 'right';
-			closeButton.style.verticalAlign = 'middle';
 			closeButton.appendChild(span);
 			closeButton.addEventListener('click', (event) => closeTab(window.tabs, i, j, li, event));
 
 			// used span to avoid two hyperlinks.
 			const name = document.createElement('span');
 			name.className = 'web-name';
-			name.style.fontSize = '80%';
 			name.innerHTML = tab.title.length > 35 ? `${tab.title.substring(0, 35)}...<br/>` : `${tab.title}<br/>`;
 
 			const url = document.createElement('span');
 			url.className = 'web-url';
-			url.style.color = 'grey';
-			url.style.fontSize = '60%';
 
 			// Parse address before the third slash.
 			const urlToDisplay = tab.url.substring(0, tab.url.indexOf('/', 8));
@@ -285,7 +272,7 @@ function updateButtonCount() {
  * Called at the beginning of DragHandler
  */
 function resetDragHighlight() {
-  const liArray = $('#tabs_results')[0].getElementsByTagName('li');
+  const liArray = $('#tabs-results')[0].getElementsByTagName('li');
   for (let k = 0; k < liArray.length; k += 1) {
     liArray[k].setAttribute('style', 'border: none');
   }
@@ -304,7 +291,7 @@ function dragHandler(event, windows) {
     resetDragHighlight();
   }
 
-  const tabs = $('#tabs_results')[0].getElementsByTagName('li');
+  const tabs = $('#tabs-results')[0].getElementsByTagName('li');
   if (event.clientY < tabs[0].offsetTop) {
     targetWinId = windows[0].id;
     targetTabIdx = 0;

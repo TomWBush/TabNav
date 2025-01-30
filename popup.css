@@ -1,35 +1,46 @@
-.search{
-  height: 30px;
-  width: 350px;
-  margin-bottom: 15px;
-  overflow: hidden;
+li {
+	display: block;
 }
 
-.close{
+.search {
+	height: 30px;
+	width: 350px;
+	margin-bottom: 15px;
+	overflow: hidden;
+}
+
+.close {
     z-index: 100000;
-    width: 18px;
+    width: 25px;
+	height: 25px;
+	float: right;
+	vertical-align: middle;
 }
 
-body{
+body {
     height: 100%;
     width: 350px;
-    border:0;
-    top:100%;
-    bottom:0;
-    left:0;
-    right:0;
+    border :0;
+    top: 100%;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }
 
-.input-group{
-  border: 8px solid #f6f6f6;
+.input-group {
+	border: 8px solid #f6f6f6;
 }
 
-.favicon{
-    margin-top: 10px;
-    margin-right: 3px;
+.favicon {
+	width: 30px;
+	height: 30px;
+	margin-top: 10px;
+	margin-right: 3px;
+	float: left;
+	vertical-align: middle;
 }
 
-.window{
+.window {
     margin-top: 0px;
     background-color: rgba(118, 128, 250, 0.69);
     font-family: 'Kreon', serif;
@@ -38,14 +49,14 @@ body{
     color: white;
 }
 
-#input-search{
+#input-search {
     padding: 8px;
     /* padding-bottom: 15px; */
     width: 70%;
     overflow: hidden;
 }
 
-#button-container{
+#button-container {
     background-color : white;
     z-index: 5;
     position: sticky;
@@ -55,7 +66,7 @@ body{
     width: 100%;
 }
 
-#tabs_results {
+#tabs-results {
     z-index: -100;
     list-style-type: none;
     left: -4px;
@@ -69,26 +80,26 @@ body{
     overflow-x: hidden;
 }
 
-.web-url{
+.web-url {
   font-family: 'Assistant', sans-serif;
   top: 0px;
   color: grey;
   font-size: 60%;
 }
 
-.web-name{
+.web-name {
   font-family: 'Assistant', sans-serif;
   margin-bottom: 10px;
   font-size: 80%;
 }
 
-#tabs_results li :hover:not(.header){
+#tabs-results li :hover:not(.header) {
   /*background-color: #eee; /* Add a hover effect to all links, except for headers */
   color: #6fa0e9 !important;
   background: #e7f0f7 !important;
 }
 
-#tabs_results li a{
+#tabs-results li a {
   border: 1px solid #ddd; /* Add a border to all links */
   margin-top: -1px;
   font-size: 17px; /* Increase the font-size */
@@ -97,7 +108,7 @@ body{
 }
 
 
-#mergeAll{
+#mergeAll {
   background: rgba(118, 128, 250, 0.92);
   border-radius: 100px;
   position: absolute; 
@@ -110,7 +121,7 @@ body{
 }
 
 
-#merge-selected{
+#merge-selected {
   background: rgba(118, 128, 250, 0.92);
   border-radius: 100px;
   position: absolute; 
@@ -123,14 +134,14 @@ body{
 
 }
 
-.nav-icon{
+.nav-icon {
   content: url('images/Black-Icon-128.png');
   height: 20px;
   width: 20px;
   display: block;
 }
 
-.input-group-prepend{
+.input-group-prepend {
   background-color: white;
 }
 

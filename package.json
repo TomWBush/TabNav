@@ -5,8 +5,8 @@
   "main": ".eslintrc.js",
   "dependencies": {},
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint": "^9.19.0",
+    "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.18.2"
   },
   "scripts": {
