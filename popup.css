@@ -69,14 +69,17 @@ body{
     overflow-x: hidden;
 }
 
-#web-url{
+.web-url{
   font-family: 'Assistant', sans-serif;
   top: 0px;
+  color: grey;
+  font-size: 60%;
 }
 
-#web-name{
+.web-name{
   font-family: 'Assistant', sans-serif;
   margin-bottom: 10px;
+  font-size: 80%;
 }
 
 #tabs_results li :hover:not(.header){

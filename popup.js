@@ -1,47 +1,37 @@
-// Global variables
-var newWinId;
-var tabsToMove = [];
-var curTab;
-var winidToLastab = {}; // maps windowId to last tab index (for keydown keyup usage)
-var last_clientY = -100; // last drag event coordinate
-var targetWinId = -2; // target window of dropped tab
-var targetTabIdx = -2; // tab index inside the target window of dropped tab
+import { Event } from './eventHandler.js';
 
+// Global variables
+let newWinId = -1;
+let tabsToMove = [];
+let curTab = null;
+let winidToLastab = {};  // maps windowId to last tab index (for keydown keyup usage)
+let last_clientY = -100; // last drag event coordinate
+let targetWinId = -2;    // target window of dropped tab
+let targetTabIdx = -2;   // tab index inside the target window of dropped tab
+
+// Update button count, if selected tab is closed.
+chrome.tabs.onRemoved.addListener(updateButtonCount);
 
 document.getElementById('input-search').addEventListener('keyup', filterResults);
 
-// Chain the promise to solve asynchronous problem
-getCurTabId().then((result) => {
-  curTab = result;
+document.addEventListener('DOMContentLoaded', async () => {
+	curTab = await getCurTabId(); 
+    updateTabResults();
 });
 
-Event.prototype.addHandler = function pushHandler(eventHandler) {
-  this.eventHandlers.push(eventHandler);
-};
-
-Event.prototype.execute = function setHandler() {
-  for (let i = 0; i < this.eventHandlers.length; i += 1) {
-    this.eventHandlers[i]();
-  }
-};
 
 const openWindow = new Event();
-// Add handler.
 openWindow.addHandler(newWindow);
 openWindow.addHandler(moveTabs);
 openWindow.addHandler(removeBlank);
 openWindow.addHandler(focus);
+
 // Regiser one listener on some object.
 document.getElementById('merge-selected').addEventListener('click', () => {
   if (tabsToMove.length > 0) { // do nothing if no tab is selected
     openWindow.execute();
   }
-}, true);
-
-// Update button count, if selected tab is closed.
-chrome.tabs.onRemoved.addListener(updateButtonCount.bind());
-
-updateTabResults();
+});
 
 
 /** ***************
@@ -57,26 +47,23 @@ function filterResults() {
   const ul = document.getElementById('tabs_results');
   const li = ul.getElementsByTagName('li');
 
-  for (let i = 0; i < li.length; i += 1) {
-    const aTag = li[i].getElementsByTagName('a')[0];
+  for (const element of li) {
+    const aTag = element.querySelector('a');
     const txtValue = aTag.textContent || aTag.innerText;
-    li[i].style.display = (txtValue.toUpperCase().indexOf(filter) > -1) ? '' : 'none';
+    element.style.display = txtValue.toUpperCase().includes(filter) ? '' : 'none';
   }
 
   // filter windows
-  chrome.windows.getAll({ populate: true }, (windows) => {
-    for (let i = 0; i < windows.length; i += 1) {
-      let counter = 0;
-      for (let j = 0; j < windows[i].tabs.length; j += 1) {
-        let str = '';
-        str = str.concat(i, ' ', j);
-        if (document.getElementById(str).style.display === '') {
-          counter += 1;
-        }
-      }
-      document.getElementById(i).style.display = (counter === 0) ? 'none' : '';
-    }
-  });
+  chrome.windows.getAll({ populate: true }).then(windows => {
+    windows.forEach((win, i) => {
+		const visibleTabs = win.tabs.filter(tab => {
+			const str = `${i} ${win.tabs.indexOf(tab)}`;
+			const element = document.getElementById(str);
+			return element && element.style.display === ''; // Check if element exists
+		});
+      document.getElementById(i).style.display = visibleTabs.length === 0 ? 'none' : '';
+    });
+  }).catch(console.error);
 }
 
 /**
@@ -86,9 +73,14 @@ function filterResults() {
  * @param {int} idIn      The id of tab to switch to
  */
 function switchTab(tabsIn, idIn) {
-  chrome.tabs.update(tabsIn[idIn].id, { active: true }, () => {
-    chrome.windows.update(tabsIn[idIn].windowId, { focused: true });
-  });
+    chrome.tabs.update(tabsIn[idIn].id, { active: true }, () => {
+        // Error handling for chrome.windows.update
+        try {
+            chrome.windows.update(tabsIn[idIn].windowId, { focused: true });
+        } catch (error) {
+            console.error("Error focusing window:", error);
+        }
+    });
 }
 
 /**
@@ -99,221 +91,193 @@ function switchTab(tabsIn, idIn) {
  * @param {int} tabId    Tab ID of the tab you want to close
  * @param {li} curLi      The corresponding list item in popup of the tab you want to close
  */
-function closeTab(tabsIn, winId, tabId, curLi) {
-  chrome.tabs.query({}, () => {
-    chrome.tabs.remove(tabsIn[tabId].id);
-  });
-  curLi.remove();
-  let str = '';
-  str = str.concat(winId, ' ', tabId);
-  const storedId = str;
-  if (tabsToMove.includes(storedId)) {
-    tabsToMove.splice(tabsToMove.indexOf(storedId), 1);
-  }
+function closeTab(tabsIn, winId, tabId, curLi, event) {
+	if (event) { // Check if event exists (it might not in all cases)
+        event.stopPropagation(); // Use event.stopPropagation() if event is available
+    }
 
-  if (tabsToMove.length > 0) {
-    tabsToMove = [];
-    setTimeout(() => {}, 1000);
-    window.location.reload();
-  }
-  event.stopPropagation();
-}
+    if (!tabsIn || !tabsIn[tabId]) { // Check if tabsIn and tabsIn[tabId] are defined
+        console.error("Error: tabsIn is undefined or invalid index.");
+        return; // Or handle the error appropriately
+    }
 
-/**
- * Counting occurence of char in string.
- *
- * @param {string} string
- * @param {char} char
- */
-function count(string, char) {
-  const re = new RegExp(char, 'gi');
-  return string.match(re).length;
+	chrome.tabs.remove(tabsIn[tabId].id).then(() => {
+		curLi.remove();
+		const storedId = `${winId} ${tabId}`; // Template literal
+		const index = tabsToMove.indexOf(storedId);
+		if (index > -1) {
+			tabsToMove.splice(index, 1);
+		}
+
+		if (tabsToMove.length === 0) {
+			updateTabResults();
+		}
+	}).catch(console.error);
 }
 
 /**
  * Asynchronously query the current tab
  */
-function getCurTabId() {
-  const promise = new Promise((resolve) => {
-    chrome.tabs.query({ highlighted: true, lastFocusedWindow: true }, (tabs) => {
-      resolve(tabs[0]);
-    });
-  });
-  return promise;
-}
-
-/**
- * Use event handler to open a new window
- * (instead of a new tab to get around behavior from chrome.windows.create)
-*/
-function Event() {
-  this.eventHandlers = [];
+async function getCurTabId() {
+	const tabs = await chrome.tabs.query({ highlighted: true, lastFocusedWindow: true });
+	return tabs[0];
 }
 
 /**
  * Create a new window
  */
 function newWindow() {
-  chrome.windows.create({}, (win) => {
-    newWinId = win.id;
-  });
+    chrome.windows.create({}).then(win => {
+        newWinId = win.id;
+    }).catch(console.error);
 }
 
-function moveTabs() {
-  chrome.windows.getAll({ populate: true }, (windows) => {
-    const list = [];
-    for (let k = 0; k < tabsToMove.length; k += 1) {
-      const windowIndex = Number(tabsToMove[k].split(' ')[0]);
-      const tabIndex = Number(tabsToMove[k].split(' ')[1]);
-      list.push(windows[windowIndex].tabs[tabIndex].id);
-    }
-    chrome.tabs.move(list, { windowId: newWinId, index: -1 });
+async function moveTabs() {
+    const windows = await chrome.windows.getAll({ populate: true });
+    const list = tabsToMove.map(tabId => {
+		const [windowIndex, tabIndex] = tabId.split(' ').map(Number);
+		return windows[windowIndex].tabs[tabIndex].id;
+	})
+
+    await chrome.tabs.move(list, { windowId: newWinId, index: -1 });
     tabsToMove = [];
-  });
+	updateTabResults();
 }
 
 function removeBlank() {
-  chrome.tabs.query({ windowId: newWinId }, (newWinTabs) => {
-    chrome.tabs.remove(newWinTabs[newWinTabs.length - 1].id);
-  });
-  window.location.reload();
+	chrome.tabs.query({ windowId: newWinId }).then(newWinTabs => {
+		chrome.tabs.remove(newWinTabs[newWinTabs.length - 1].id).then(() => {
+			updateTabResults(); // Update instead of reload
+		}).catch(console.error);
+	}).catch(console.error);
 }
 
 /**
  * Focus onto merge-selected windows
  */
 function focus() {
-  chrome.windows.getAll((windows) => {
-    for (let i = 0; i < windows.length; i += 1) {
-      chrome.windows.update(windows[i].id, { focused: true });
-    }
-  });
+    chrome.windows.getAll().then(windows => {
+        windows.forEach(window => {
+            chrome.windows.update(window.id, { focused: true });
+        });
+    }).catch(console.error);
 }
 
 /**
  * Update the list of all open tabs inside popup
  */
-function updateTabResults() {
-  chrome.windows.getAll({ populate: true }, (windows) => {
-    for (let i = 0; i < windows.length; i += 1) {
-      let str = '';
-      const title = document.createElement('div');
-      title.setAttribute('class', 'window');
-      title.setAttribute('id', i);
-      str = str.concat('Window ', (i + 1).toString());
-      title.innerHTML = str;
-      document.getElementById('tabs_results').appendChild(title);
-      winidToLastab[i] = windows[i].tabs.length - 1;
-      for (let j = 0; j < windows[i].tabs.length; j += 1) {
-        const img = document.createElement('img');
-        const newli = document.createElement('li');
-        const newa = document.createElement('a');
-        const x = document.createElement('button');
-        const span = document.createElement('span');
+async function updateTabResults() {
+	const windows = await chrome.windows.getAll({ populate: true });
+	const tabsResults = document.getElementById('tabs_results');
+	tabsResults.innerHTML = ''; // Clear previous results
 
-        str = '';
-        str = str.concat(i, ' ', j);
-        newli.setAttribute('id', str);
-        newa.setAttribute('id', str);
-        span.setAttribute('id', str);
-        img.setAttribute('id', str);
+	windows.forEach((window, i) => {
+		const title = document.createElement('div');
+		title.className = "window";
+		title.id = i;
+		title.innerHTML = `Window ${i + 1}`;
+		tabsResults.appendChild(title);
+		winidToLastab[i] = window.tabs.length - 1;
+		
+		const fragment = document.createDocumentFragment(); // Use a fragment for better performance
 
-        if (windows[i].tabs[j].favIconUrl) {
-          img.setAttribute('src', windows[i].tabs[j].favIconUrl);
-        } else {
-          img.setAttribute('src', 'images/grey-chrome.png');
+		window.tabs.forEach((tab, j) => {
+			const li = document.createElement('li');
+			li.id = `${i} ${j}`;
+			li.style.display = 'block';
+
+			const a = document.createElement('a');
+			a.id = `${i} ${j}`;
+			a.draggable = true;
+
+			const img = document.createElement('img');
+			img.id = `${i} ${j}`;
+			img.src = tab.favIconUrl || 'images/grey-chrome.png';
+			img.width = 30;
+			img.height = 30;
+			img.style.float = 'left';
+			img.style.verticalAlign = 'middle';
+			img.className = 'favicon';
+
+			const span = document.createElement('span');
+			span.id = `${i} ${j}`;
+			span.ariaHidden = true;
+			span.innerHTML = '&times;';
+
+			const closeButton = document.createElement('button');
+			closeButton.className = 'close';
+			closeButton.width = 15;
+			closeButton.height = 15;
+			closeButton.setAttribute.type= 'button';
+			closeButton.class = 'close';
+			closeButton.ariaLabel= 'close';
+			closeButton.style.float = 'right';
+			closeButton.style.verticalAlign = 'middle';
+			closeButton.appendChild(span);
+			closeButton.addEventListener('click', (event) => closeTab(window.tabs, i, j, li, event));
+
+			// used span to avoid two hyperlinks.
+			const name = document.createElement('span');
+			name.className = 'web-name';
+			name.style.fontSize = '80%';
+			name.innerHTML = tab.title.length > 35 ? `${tab.title.substring(0, 35)}...<br/>` : `${tab.title}<br/>`;
+
+			const url = document.createElement('span');
+			url.className = 'web-url';
+			url.style.color = 'grey';
+			url.style.fontSize = '60%';
+
+			// Parse address before the third slash.
+			const urlToDisplay = tab.url.substring(0, tab.url.indexOf('/', 8));
+      url.innerHTML =  tab.url.split('/').length <= 3 ? tab.url : urlToDisplay;
+
+			a.appendChild(name);
+			a.appendChild(url);
+			a.appendChild(closeButton);
+			// curTab from getCurTabId. Used promise to solve asynchronous problem.
+			if (curTab  && tab.id === curTab.id) {
+				a.style.backgroundColor = '#A7E8FF';
+			}
+			a.addEventListener('dragover', (event) => {
+				dragHandler(event, windows);
+			});
+			a.addEventListener('dragend', (event) => {
+				dropHandler(event, windows);
+				chrome.tabs.reload();
+			});
+
+			li.appendChild(img);
+			li.appendChild(a);
+			li.addEventListener('contextmenu', (event) => {
+				event.preventDefault();
+				const li = event.target.closest('li'); // Use closest() to find the li
+        if (!li) { // Check if li was found
+            console.error("Error: Could not find the <li> element.");
+            return;
         }
-        img.width = 30;
-        img.height = 30;
-        img.setAttribute('style', 'float: left; vertical-align: middle;');
-        img.setAttribute('class', 'favicon');
-        span.setAttribute('aria-hidden', 'true');
-        span.innerHTML = '&times;';
+        const tab = li.id; // Get the id from the li
+				if (tabsToMove.includes(tab)) {
+					tabsToMove.splice(tabsToMove.indexOf(tab), 1);
+					li.querySelector('a').style.backgroundColor = '#f6f6f6';
+				} else {
+					tabsToMove.push(tab);
+					li.querySelector('a').style.backgroundColor = '#ffd27f'
+				}
+				updateButtonCount();
+			});
 
-        x.className = 'closeSpan';
-        x.width = 15;
-        x.height = 15;
-        x.setAttribute('type', 'button');
-        x.setAttribute('class', 'close');
-        x.setAttribute('aria-label', 'close');
-        x.setAttribute('style', 'float: right; vertical-align: middle;');
-        x.appendChild(span);
-        x.addEventListener('click', closeTab.bind(null, windows[i].tabs, i, j, newli));
-
-        // used span to avoid two hyperlinks.
-        const name = document.createElement('span');
-        const url = document.createElement('span');
-        name.setAttribute('id', 'web-name');
-        url.setAttribute('id', 'web-url');
-        if (windows[i].tabs[j].title.length > 35) {
-          str = '';
-          str = str.concat(windows[i].tabs[j].title.substring(0, 35), '...', '<br />');
-          name.innerHTML = str;
-        } else {
-          str = '';
-          str = str.concat(windows[i].tabs[j].title, '<br />');
-          name.innerHTML = str;
-        }
-
-        name.setAttribute('style', 'font-size: 80%;');
-        url.setAttribute('style', 'color: grey; font-size: 60%;');
-
-        // Parse address before the third slash.
-        if (count(windows[i].tabs[j].url.substring(0, windows[i].tabs[j].url.length - 1), '/') <= 2) {
-          url.innerHTML = windows[i].tabs[j].url;
-        } else {
-          url.innerHTML = windows[i].tabs[j].url
-            .substring(0, windows[i].tabs[j].url.indexOf('/', 8));
-        }
-
-        newa.appendChild(name);
-        newa.appendChild(url);
-        newa.appendChild(x);
-        newa.setAttribute('draggable', true);
-        newa.addEventListener('dragover', (event) => {
-          dragHandler(event, windows);
-        });
-        newa.addEventListener('dragend', (event) => {
-          dropHandler(event, windows);
-          window.location.reload();
-        });
-
-        // curTab from getCurTabId. Used promise to solve asynchronous problem.
-        if (curTab !== undefined && windows[i].tabs[j].id === curTab.id) {
-          newa.setAttribute('style', 'background-color: #A7E8FF;');
-        }
-        newli.appendChild(img);
-        newli.appendChild(newa);
-        newli.addEventListener('contextmenu', function(event) {
-          const tab = event.path[1].id;
-          if (tabsToMove.includes(tab)) {
-            tabsToMove.splice(tabsToMove.indexOf(tab), 1);
-            const aCol = this.getElementsByTagName('a');
-            aCol[0].style.backgroundColor = '#f6f6f6';
-          } else {
-            tabsToMove.push(tab);
-            const aCol = this.getElementsByTagName('a');
-            aCol[0].style.backgroundColor = '#ffd27f';
-          }
-          updateButtonCount();
-          event.preventDefault();
-        }, false);
-
-        newli.addEventListener('click', switchTab.bind(null, windows[i].tabs, j));
-        newli.setAttribute('style', 'display: block');
-        document.getElementById('tabs_results').appendChild(newli);
-      }
-    }
-  });
+			li.addEventListener('click', switchTab.bind(null, window.tabs, j));
+			fragment.appendChild(li);
+		});
+		tabsResults.appendChild(fragment);
+	});
 }
 
 /**
  * Update the open tab count on the extension icon
  */
 function updateButtonCount() {
-  let str = '';
-  str = str.concat('Merge selected (', tabsToMove.length, ')');
-  document.getElementById('merge-selected').innerHTML = str;
+	document.getElementById('merge-selected').textContent = `Merge selected (${tabsToMove.length})`;
 }
 
 /**

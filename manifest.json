@@ -1,13 +1,16 @@
 {
   "name": "Tab Nav",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "An extension that allows you to quickly search through your current active tabs.",
-  "permissions": ["declarativeContent", "tabs"],
+  "permissions": [
+    "declarativeContent",
+    "tabs"
+  ],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html",
     "default_icon": {
       "16": "images/Black-Icon-16.png",
@@ -17,7 +20,7 @@
     }
   },
   "commands": {
-    "_execute_browser_action": {
+    "_execute_action": {
       "suggested_key": {
       "default": "Ctrl+M",
       "mac": "Command+M"
@@ -31,5 +34,5 @@
     "48": "images/Black-Icon-48.png",
     "128": "images/Black-Icon-128.png"
   },
-  "manifest_version": 2
+  "manifest_version": 3
 }

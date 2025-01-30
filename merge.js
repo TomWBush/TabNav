@@ -1,3 +1,5 @@
+document.getElementById('mergeAll').addEventListener('click', mergeAll);
+
 function mergeAll() {
   chrome.windows.getAll((windows) => {
     if (windows.length > 1) {
@@ -16,5 +18,3 @@ function mergeAll() {
     }
   });
 }
-
-document.getElementById('mergeAll').addEventListener('click', mergeAll);

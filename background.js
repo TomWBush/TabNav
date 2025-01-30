@@ -1,22 +1,24 @@
-chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
-  chrome.declarativeContent.onPageChanged.addRules([{
-    conditions: [new chrome.declarativeContent.PageStateMatcher({})],
-    actions: [new chrome.declarativeContent.ShowPageAction()],
-  }]);
-});
+// Update number of tabs currently opened.
+chrome.tabs.onUpdated.addListener(updateBadge);
+chrome.tabs.onRemoved.addListener(updateBadge);
+chrome.tabs.onCreated.addListener(updateBadge);
 
-chrome.tabs.query({}, (tabs) => {
-  chrome.browserAction.setBadgeBackgroundColor({ color: '#909090' });
-  chrome.browserAction.setBadgeText({ text: tabs.length.toString() });
-});
+chrome.tabs.query({}, updateBadge);
 
 function updateBadge() {
-  chrome.tabs.query({}, (tabs) => {
-    chrome.browserAction.setBadgeText({ text: tabs.length.toString() });
-  });
+	chrome.tabs.query({}, tabs => {
+        chrome.action.setBadgeText({ text: tabs.length.toString() });
+    });
 }
 
-// Update number of tabs currently opened.
-chrome.tabs.onUpdated.addListener(updateBadge.bind());
-chrome.tabs.onRemoved.addListener(updateBadge.bind());
-chrome.tabs.onCreated.addListener(updateBadge.bind());
+chrome.declarativeContent.onPageChanged.removeRules(undefined, () => {
+	chrome.declarativeContent.onPageChanged.addRules([{
+		conditions: [new chrome.declarativeContent.PageStateMatcher({})],
+		actions: [new chrome.declarativeContent.ShowPageAction()],
+	}]);
+});
+
+// Set badge background color (do this only once, ideally on extension install)
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.action.setBadgeBackgroundColor({ color: '#909090' });
+});
