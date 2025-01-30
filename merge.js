@@ -1,4 +1,4 @@
-document.getElementById('mergeAll').addEventListener('click', mergeAll);
+document.getElementById('merge-all').addEventListener('click', mergeAll);
 
 function mergeAll() {
   chrome.windows.getAll((windows) => {

@@ -35,7 +35,7 @@ body {
 	width: 30px;
 	height: 30px;
 	margin-top: 10px;
-	margin-right: 3px;
+	margin-right: 10px;
 	float: left;
 	vertical-align: middle;
 }
@@ -47,6 +47,7 @@ body {
     font-size: 18px;
     text-indent: 120px;
     color: white;
+    text-align: justify;
 }
 
 #input-search {
@@ -80,17 +81,16 @@ body {
     overflow-x: hidden;
 }
 
+.web-name {
+  font-family: 'Assistant', sans-serif;
+  font-size: 85%;
+}
+
 .web-url {
   font-family: 'Assistant', sans-serif;
   top: 0px;
   color: grey;
-  font-size: 60%;
-}
-
-.web-name {
-  font-family: 'Assistant', sans-serif;
-  margin-bottom: 10px;
-  font-size: 80%;
+  font-size: 70%;
 }
 
 #tabs-results li :hover:not(.header) {
@@ -108,14 +108,14 @@ body {
 }
 
 
-#mergeAll {
+#merge-all {
   background: rgba(118, 128, 250, 0.92);
   border-radius: 100px;
   position: absolute; 
   left: 30px;
   bottom: 8px; 
   padding: 0;
-  font-size: 58%;
+  font-size: 70%;
   width: 80px;
   height: 28px;
 }
@@ -128,7 +128,7 @@ body {
   left: 180px;
   bottom: 8px; 
   padding: 0;
-  font-size: 60%;
+  font-size: 70%;
   width: 130px;
   height: 28px;
 
