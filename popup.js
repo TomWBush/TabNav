@@ -272,10 +272,8 @@ function updateButtonCount() {
  * Called at the beginning of DragHandler
  */
 function resetDragHighlight() {
-  const liArray = $('#tabs-results')[0].getElementsByTagName('li');
-  for (let k = 0; k < liArray.length; k += 1) {
-    liArray[k].setAttribute('style', 'border: none');
-  }
+  	const liElements = document.querySelectorAll('#tabs-results li'); // Use querySelectorAll
+    liElements.forEach(li => li.style.border = '');
 }
 
 /**
@@ -285,69 +283,91 @@ function resetDragHighlight() {
  * @param {*} windows  all open windows
  */
 function dragHandler(event, windows) {
-  // Prevent the line from blinking
-  if (Math.abs(event.clientY - last_clientY) > 1) {
-    last_clientY = event.clientY;
-    resetDragHighlight();
-  }
+	if (Math.abs(event.clientY - last_clientY) <= 1) return; // Early return if mouse hasn't moved significantly
 
-  const tabs = $('#tabs-results')[0].getElementsByTagName('li');
-  if (event.clientY < tabs[0].offsetTop) {
-    targetWinId = windows[0].id;
-    targetTabIdx = 0;
-    tabs[0].setAttribute('style', 'border-top: solid green;');
-    return;
-  }
+	last_clientY = event.clientY;
 
-  if (event.clientY + 15 > tabs[tabs.length - 1].getBoundingClientRect().bottom) {
-    targetWinId = windows[windows.length - 1].id;
-    targetTabIdx = -1;
-    tabs[tabs.length - 1].setAttribute('style', 'border-bottom: solid green;');
-    return;
-  }
+	const tabs = document.querySelectorAll('#tabs-results li');
+	const tabCount = tabs.length;
 
-  let winId = 0;
-  // If more than 1 window, check which window is target window
-  let windowMiddle = (tabs[0].getBoundingClientRect().top - document.getElementById(0).offsetTop) / 2;
-  let tabMiddle = (tabs[0].getBoundingClientRect().bottom - tabs[0].getBoundingClientRect().top) / 2;
-  if (windows.length > 1) {
-    for (let i = 1; i < windows.length; i += 1) {
-      if (event.clientY + 10 > document.getElementById(i - 1).offsetTop
-          && event.clientY < document.getElementById(i).offsetTop) {
-        winId = i - 1;
-      }
+	let currentHighlight = null;
+
+	// Helper function to set highlight
+    function setHighlight(element, position) {
+        resetDragHighlight(); // Clear all other highlights
+        element.style[position] = 'solid green';
+        currentHighlight = { element, position }; // Store the current highlight
     }
-    if (event.clientY + 10 > document.getElementById(windows.length - 1).offsetTop
-        && event.clientY < tabs[tabs.length - 1].getBoundingClientRect().bottom) {
-      winId = windows.length - 1;
-    }
-  }
-  // Then check where in target window
-  chrome.tabs.query({ windowId: windows[winId].id }, (targetWindowTabs) => {
-    if (winId != 0 && document.getElementById(winId).offsetTop + windowMiddle + 0.01 < event.clientY
-        && document.getElementById(winId + ' ' + 0).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
-          document.getElementById(winId + ' ' + 0).setAttribute('style', 'border-top: solid green;');
-          targetWinId = windows[winId].id;
-          targetTabIdx = 0;
-        }
-    else if (winId != windows.length - 1 && document.getElementById(winId + 1).offsetTop + windowMiddle - 0.01 > event.clientY
-             && document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY) {
-          document.getElementById(winId + ' ' + (targetWindowTabs.length - 1)).setAttribute('style', 'border-bottom: solid green;');
-          targetWinId = windows[winId].id;
-          targetTabIdx = -1;
-    }
-    else {
-      for (let i = 1; i < targetWindowTabs.length; i += 1) {
-        if (document.getElementById(winId + ' ' + (i - 1)).getBoundingClientRect().top + tabMiddle + 0.01 < event.clientY
-            && document.getElementById(winId + ' ' + i).getBoundingClientRect().top + tabMiddle - 0.01 > event.clientY) {
-              document.getElementById(winId + ' ' + i).setAttribute('style', 'border-top: solid green;');
-              targetWinId = windows[winId].id;
-              targetTabIdx = i;
-              break;
-            }
-      }
-    }
-  });
+
+	if (event.clientY < tabs[0].offsetTop) {
+		if (currentHighlight && currentHighlight.element === tabs[0] && currentHighlight.position === 'borderTop') return;
+		setHighlight(tabs[0], 'borderTop');
+		targetWinId = windows[0].id;
+		targetTabIdx = 0;
+		return;
+	}
+
+	if (event.clientY + 15 > tabs[tabCount- 1].getBoundingClientRect().bottom) {
+		if (currentHighlight && currentHighlight.element === tabs[tabCount - 1] && currentHighlight.position === 'borderBottom') return;
+		setHighlight(tabs[tabCount - 1], 'borderBottom');
+		targetWinId = windows[windows.length - 1].id;
+		targetTabIdx = -1;
+		return;
+	}
+
+	let winId = 0;
+	const windowCount = windows.length;
+	// If more than 1 window, check which window is target window
+	const windowMiddle = (tabs[0].getBoundingClientRect().top - document.getElementById(0).offsetTop) / 2;
+	const tabHeight = tabs[0].getBoundingClientRect().height;
+	if (windows.length > 1) {
+
+		for (let i = 1; i < windows.length; i ++) {
+			const windowTop = document.getElementById(i - 1).offsetTop;
+			if (event.clientY + 10 > windowTop && event.clientY < document.getElementById(i).offsetTop) {
+				winId = i - 1;
+				break;
+			}
+		}
+		if (event.clientY + 10 > document.getElementById(windowCount - 1).offsetTop
+			&& event.clientY < tabs[tabCount - 1].getBoundingClientRect().bottom)
+		{
+			winId = windowCount - 1;
+		}
+	}
+	// Then check where in target window
+	chrome.tabs.query({ windowId: windows[winId].id }, (targetWindowTabs) => {
+		const targetTabCount = targetWindowTabs.length;
+		const windowElement = document.getElementById(winId);
+		if (windowElement.offsetTop + windowMiddle + 0.01 < event.clientY &&
+			document.getElementById(`${winId} 0`).getBoundingClientRect().top + tabHeight / 2 - 0.01 > event.clientY)
+		{
+			setHighlight(document.getElementById(`${winId} 0`), 'borderTop');
+			targetWinId = windows[winId].id;
+			targetTabIdx = 0;
+		}
+		else if (winId !== windowCount - 1 &&
+				document.getElementById(winId + 1).offsetTop + windowMiddle - 0.01 > event.clientY &&
+				document.getElementById(`${winId} ${targetTabCount - 1}`).getBoundingClientRect().top + tabHeight / 2 + 0.01 < event.clientY)
+		{
+			setHighlight(document.getElementById(`${winId} ${targetTabCount - 1}`), 'borderBottom');
+			targetWinId = windows[winId].id;
+			targetTabIdx = -1;
+		}
+		else {
+			for (let i = 1; i < targetWindowTabs.length; i ++) {
+				const tabTop = document.getElementById(`${winId} ${i - 1}`).getBoundingClientRect().top;
+				if (tabTop + tabHeight / 2 + 0.01 < event.clientY &&
+					document.getElementById(`${winId} ${i}`).getBoundingClientRect().top + tabHeight / 2 - 0.01 > event.clientY)
+				{
+					setHighlight(document.getElementById(`${winId} ${i}`), 'borderTop');
+					targetWinId = windows[winId].id;
+					targetTabIdx = i;
+					break;
+				}
+			}
+		}
+	});
 }
 
 /**
@@ -356,9 +376,22 @@ function dragHandler(event, windows) {
  */
 function dropHandler(event, windows) {
   resetDragHighlight();
-  chrome.tabs.query({ windowId: windows[parseInt(event.srcElement.id[0])].id }, (srcTab) => {
-    chrome.tabs.move(srcTab[parseInt(event.srcElement.id[2])].id, { windowId: targetWinId, index: targetTabIdx });
-    event.stopPropagation();
+
+  const srcWindowId = windows[parseInt(event.srcElement.id[0])].id;
+  const srcTabId = event.srcElement.id[2]; // No need to parse if it's already a string
+
+  chrome.tabs.query({ windowId: srcWindowId }, (srcTab) => {
+      const tabIdToMove = srcTab[parseInt(srcTabId)].id;
+
+      chrome.tabs.move(tabIdToMove, { windowId: targetWinId, index: targetTabIdx }, () => {  // Callback here!
+          if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError);
+              return; // Handle error if necessary
+          }
+          updateTabResults(); // Call updateTabResults() *inside* the callback
+      });
+
+      event.stopPropagation(); // Keep this after the async call starts
   });
 }
 
